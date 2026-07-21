@@ -1,21 +1,38 @@
 version: '3.8'
 
+# Базовый шаблон для всех Python-сервисов (DRY)
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file:
+    - .env
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
 services:
+  # === INFRASTRUCTURE LAYER ===
   db:
-    # Строгое семантическое версионирование для стабильности
     image: postgres:15.5-alpine
     container_name: aibot_postgres
     restart: unless-stopped
-    # Пробрасываем наши креды из существующего .env файла
     env_file:
       - .env
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
-    # Строгое семантическое версионирование
     image: redis:7.2.3-alpine
     container_name: aibot_redis
     restart: unless-stopped
@@ -23,6 +40,30 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # === APPLICATION LAYER ===
+  api:
+    <<: *app-base
+    container_name: aibot_api
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  celery_worker:
+    <<: *app-base
+    container_name: aibot_worker
+    # Запускаем worker. Рекомендуется использовать threads или gevent/eventlet для I/O bound задач
+    command: celery -A app.core.celery_app worker -l INFO --pool=threads --concurrency=10
+
+  celery_beat:
+    <<: *app-base
+    container_name: aibot_beat
+    command: celery -A app.core.celery_app beat -l INFO
 
 volumes:
   postgres_data:

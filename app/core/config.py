@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     # Redis & Celery Settings
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
+    REDIS_URL: str 
     REDIS_DB_CACHE: int = 0
     REDIS_DB_CELERY: int = 1
 

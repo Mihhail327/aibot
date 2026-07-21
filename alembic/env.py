@@ -18,6 +18,10 @@ from app.core.database import Base
 # ВАЖНО: Импортируем модель, чтобы Alembic увидел ее в Base.metadata
 from app.domains.sources.models import Source # noqa: F401
 
+from app.domains.keywords.models import Keyword # noqa: F401
+from app.domains.news.models import NewsItem # noqa: F401
+from app.domains.posts.models import Post # noqa: F401
+
 config = context.config
 
 if config.config_file_name is not None:

@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.exceptions import BaseAPIException
 from app.domains.sources.router import router as sources_router
+from app.domains.news.router import router as news_router
 
 # 1. Инициализация приложения
 app = FastAPI(
@@ -17,12 +18,10 @@ app = FastAPI(
 # 2. CORS Middleware (Security)
 app.add_middleware(
     CORSMiddleware,
-    # Убираем trailing slash, который Pydantic V2 автоматически добавляет к AnyHttpUrl
+    # Убираем trailing slash для консистентности origins
     allow_origins=[str(origin).rstrip("/") for origin in settings.BACKEND_CORS_ORIGINS],
     allow_credentials=True,
-    # Явно указываем разрешенные методы (никаких "*")
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    # Явно указываем разрешенные заголовки для CORS (включая будущий Authorization)
     allow_headers=["Content-Type", "Authorization", "Accept", "Origin"],
 )
 
@@ -36,8 +35,9 @@ async def custom_api_exception_handler(request: Request, exc: BaseAPIException) 
     )
 
 # 4. Регистрация доменных роутеров (Modular Design)
-# Добавляем префикс версии API для совместимости в будущем
+# Все API эндпоинты будут доступны по префиксу /api/v1 (например, /api/v1/news/)
 app.include_router(sources_router, prefix="/api/v1")
+app.include_router(news_router, prefix="/api/v1")
 
 @app.get("/health", tags=["System"])
 async def health_check() -> dict[str, str]:
