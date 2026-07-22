@@ -10,4 +10,4 @@ class Keyword(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     # Ключевое слово для фильтрации. Уникально, чтобы избежать избыточных проверок в Celery.
-    wodr: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    word: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
