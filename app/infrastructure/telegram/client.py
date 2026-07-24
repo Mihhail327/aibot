@@ -55,7 +55,7 @@ class TelegramParserClient:
         """Safely disconnect the client from Telegram servers."""
         if self.client.is_connected():
             # Добавляем игнорирование для метода disconnect
-            await self.client.disconnect()  # type: ignore
+            await self.client.disconnect()  
             logger.info("Telegram MTProto client disconnected.")
 
     async def __aenter__(self) -> "TelegramParserClient":

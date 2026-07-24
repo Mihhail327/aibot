@@ -66,6 +66,13 @@ class Settings(BaseSettings):
     # Telegram MTProto API (Telethon - for parsing)
     TELEGRAM_API_ID: int
     TELEGRAM_API_HASH: SecretStr
+    TELEGRAM_SESSION_STRING: SecretStr
+
+    # Target Channel for publications
+    TARGET_CHANNEL_ID: int | str
+
+    # Secret key for JWT encoding/decoding
+    SECRET_KEY: SecretStr
 
     # Настройки загрузки
     model_config = SettingsConfigDict(

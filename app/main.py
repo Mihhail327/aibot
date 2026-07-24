@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,6 +8,7 @@ from app.domains.sources.router import router as sources_router
 from app.domains.news.router import router as news_router
 from app.domains.keywords.router import router as keywords_router
 from app.domains.posts.router import router as posts_router
+from app.core.dependencies import get_current_admin
 
 # 1. Инициализация приложения
 app = FastAPI(
@@ -42,6 +43,7 @@ app.include_router(sources_router, prefix="/api/v1")
 app.include_router(news_router, prefix="/api/v1")
 app.include_router(keywords_router, prefix="/api/v1")
 app.include_router(posts_router, prefix="/api/v1")
+app.include_router(sources_router, prefix="/api/v1", dependencies=[Depends(get_current_admin)])
 
 @app.get("/health", tags=["System"])
 async def health_check() -> dict[str, str]:

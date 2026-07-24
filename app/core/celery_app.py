@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import settings
 
@@ -25,3 +26,11 @@ celery_app.autodiscover_tasks([
     "app.domains.news",
     "app.domains.posts",
 ])
+
+# Настройка периодических задач согласно ТЗ (каждые 30 минут)
+celery_app.conf.beat_schedule = {
+    "parse-all-channels-every-30-mins": {
+        "task": "news.parse_channels",
+        "schedule": crontab(minute="*/30"),
+    },
+}

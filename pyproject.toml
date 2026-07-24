@@ -23,6 +23,9 @@ redis = "^5.0.1"
 telethon = "^1.33.1"
 aiogram = "^3.4.1"
 openai = "^1.10.0"
+passlib = "^1.7.4"
+pyjwt = "^2.13.0"
+bcrypt = "^5.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
@@ -41,3 +44,4 @@ target-version = "py313"
 [tool.mypy]
 strict = true
 ignore_missing_imports = true
+explicit_package_bases = true
