@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class TelegramPublisher:
-    """Service for publishing AI-generatd content to Telegram channels."""
+    """Service for publishing AI-generated content to Telegram channels."""
 
     def __init__(self) -> None:
         """Initialize the Aiogram Bot instance."""
@@ -29,7 +29,10 @@ class TelegramPublisher:
             channel_id: Optional target channel override.
 
         Returns:
-        bool: true if publication was successful, False otherwise.
+            bool: True if publication was successful.
+            
+        Raises:
+            Exception: Bubbles up network or API errors to trigger Celery retries.
         """
         target = channel_id or settings.TARGET_CHANNEL_ID
 
@@ -40,10 +43,11 @@ class TelegramPublisher:
             return True
 
         except Exception as exc:
-            # Грациозная обработка ошибок (Graceful degradation)
+            # Логируем ошибку, но ОБЯЗАТЕЛЬНО пробрасываем дальше (Fail Fast).
+            # Это критически важно, чтобы Celery мог сделать retry задачи.
             logger.error(f"Failed to publish to {target}. Error: {exc}")
-            return False
+            raise
 
         finally:
-            # Обязательно закрытие сесси aiohttp во избежание утечек ресурсов
+            # Обязательное закрытие сессии aiohttp во избежание утечек ресурсов
             await self.bot.session.close()

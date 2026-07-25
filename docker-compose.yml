@@ -7,6 +7,10 @@ x-app-base: &app-base
     dockerfile: Dockerfile
   env_file:
     - .env
+  # Переопределяем хосты для корректного разрешения DNS внутри Docker-сети
+  environment:
+    - POSTGRES_HOST=db
+    - REDIS_HOST=redis
   restart: unless-stopped
   depends_on:
     db:
@@ -64,6 +68,24 @@ services:
     <<: *app-base
     container_name: aibot_beat
     command: celery -A app.core.celery_app beat -l INFO
+
+  # === MONITORING LAYER ===
+  flower:
+    image: mher/flower:2.0.1
+    container_name: aibot_flower
+    restart: unless-stopped
+    environment:
+      # Явное подключение с использованием внутреннего DNS Docker (redis)
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      # Security: Обязательная защита панели мониторинга
+      - FLOWER_BASIC_AUTH=${FLOWER_USER}:${FLOWER_PASSWORD}
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+      celery_worker:
+        condition: service_started
 
 volumes:
   postgres_data:
