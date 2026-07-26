@@ -36,3 +36,6 @@ class NewsItem(Base, TimestampMixin):
     
     # Хранение исходного текста, специфично для интеграции с Telegram API
     raw_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Путь к локально сохраненному медиафайлу (картинке)
+    media_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)

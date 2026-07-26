@@ -28,7 +28,7 @@ class PostService:
         Fetch a single post by its internal ID.
         
         Args:
-            post_id: The primary key of the post.
+            post_id: The primary key of the post (int).
             
         Returns:
             Post: The retrieved post model.
@@ -115,7 +115,7 @@ class PostService:
         Update an existing post (e.g., status, content, or publication time).
         
         Args:
-            post_id: The primary key of the post to update.
+            post_id: The primary key of the post to update (int).
             schema: Validated update data payload (partial).
             
         Returns:
@@ -132,10 +132,10 @@ class PostService:
         Hard delete a post record from the system.
         
         Args:
-            post_id: The primary key of the post to delete.
+            post_id: The primary key of the post to delete (int).
             
         Raises:
             NotFoundException: If the post does not exist.
         """
         post = await self.get_post(post_id)
-        await self.repository.delete(post)
+        await self.repository.delete(post)

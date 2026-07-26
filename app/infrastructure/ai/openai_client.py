@@ -1,3 +1,4 @@
+import re
 import logging
 from openai import AsyncOpenAI, OpenAIError
 
@@ -5,6 +6,15 @@ from app.core.config import settings
 from app.infrastructure.ai.interfaces import BaseAIGenerator
 
 logger = logging.getLogger(__name__)
+
+
+def _markdown_to_telegram_html(text: str) -> str:
+    """Convert basic Markdown syntax (**bold**, [link](url)) to Telegram-compatible HTML tags."""
+    # Заменяем ссылки [label](url) на <a href="url">label</a>
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
+    # Заменяем **жирный** на <b>жирный</b>
+    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+    return text
 
 
 class OpenAIGenerator(BaseAIGenerator):
@@ -22,11 +32,12 @@ class OpenAIGenerator(BaseAIGenerator):
         # Выбор модели. gpt-4o-mini оптимален по соотношению цена/качество
         self.model = "gpt-4o-mini"
         
-        # Системный промпт, жестко задающий формат выходных данных (Contract)
+        # Системный промпт, жестко задающий формат выходных данных в Telegram HTML
         self.system_prompt = (
             "Сделай краткое, интересное описание новости для Telegram-канала. "
-            "Обязательно добавь релевантные emoji и call to action в конце. "
-            "Не используй Markdown, если он конфликтует с HTML-разметкой Telegram."
+            "Используй только HTML-разметку Telegram (<b>жирный</b>, <i>курсив</i>, <a href='url'>текст</a>). "
+            "НЕ используй Markdown (не используй ** и [текст](url)). "
+            "Обязательно добавь релевантные emoji и call to action в конце."
         )
 
     async def generate_post(self, title: str, text: str) -> str:
@@ -50,7 +61,6 @@ class OpenAIGenerator(BaseAIGenerator):
             )
             
             # Извлекаем сгенерированный текст.
-            # Type guard для строгого mypy (содержимое может быть None)
             generated_text = response.choices[0].message.content
             if not generated_text:
                 raise RuntimeError("OpenAI returned an empty response.")
@@ -58,6 +68,13 @@ class OpenAIGenerator(BaseAIGenerator):
             return generated_text
 
         except OpenAIError as exc:
-            # Нормализация ошибок внешней библиотеки
             logger.error(f"OpenAI API Error: {exc}")
-            raise RuntimeError(f"AI Generation failed: {str(exc)}")
+            
+            # Если закончилась квота (429), используем красивый HTML fallback
+            if "insufficient_quota" in str(exc):
+                logger.warning("OpenAI quota exceeded. Using fallback HTML text generator.")
+                clean_title = title.replace("**", "").strip()
+                formatted_text = _markdown_to_telegram_html(text)
+                return f"📌 <b>{clean_title}</b>\n\n{formatted_text}"
+                
+            raise RuntimeError(f"AI Generation failed: {str(exc)}")

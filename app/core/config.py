@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     # Security
     BACKEND_CORS_ORIGINS: list[AnyHttpUrl] = []
+    INVITE_TOKEN: SecretStr | None = None
 
     # Database Settings
     POSTGRES_USER: str

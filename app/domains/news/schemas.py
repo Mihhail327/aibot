@@ -16,6 +16,8 @@ class NewsItemBase(BaseModel):
     
     # Исправленное поле для строгого тайп-чекинга
     raw_text: str | None = Field(default=None, description="Сырой текст для специфичной обработки ИИ")
+    media_path: str | None = Field(default=None, description="Путь к локально скачанному медиафайлу")
+
 
 class NewsItemCreate(NewsItemBase):
     """Schema for creating a new news item. Used primarily by Celery parsing workers."""

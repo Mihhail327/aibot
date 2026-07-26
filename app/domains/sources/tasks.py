@@ -4,8 +4,7 @@ from app.core.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
-# Точечное подавление ошибки нетипизированного декоратора
-@celery_app.task(bind=True, max_retries=3)  # type: ignore[untyped-decorator]
+@celery_app.task(bind=True, max_retries=3)
 def test_parsing_task(self: Task, source_url: str) -> dict[str, str]:
     """
     Test background task to verify Celery worker execution.
@@ -22,3 +21,5 @@ def test_parsing_task(self: Task, source_url: str) -> dict[str, str]:
     except Exception as exc:
         logger.error(f"Error processing {source_url}: {exc}")
         raise self.retry(exc=exc, countdown=5)
+
+test_parsing_task.__test__ = False

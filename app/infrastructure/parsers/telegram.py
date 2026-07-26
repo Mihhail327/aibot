@@ -34,6 +34,31 @@ class TelegramChannelParser:
 
         return messages
 
+    async def download_media_for_message(self, message: Message, download_dir: str = "/app/media") -> str | None:
+        """
+        Download photo/image media attached to a Telegram message if present.
+        Returns the absolute local path to the downloaded file, or None if no media.
+        """
+        if not message.media or not (message.photo or getattr(message, "document", None)):
+            return None
+
+        try:
+            import os
+            import uuid
+            os.makedirs(download_dir, exist_ok=True)
+            filename = f"media_{message.id}_{uuid.uuid4().hex[:8]}.jpg"
+            target_path = os.path.join(download_dir, filename)
+
+            path = await self.client_wrapper.client.download_media(message, file=target_path)
+            if path and os.path.exists(path):
+                logger.info(f"Downloaded media for message {message.id}: {path}")
+                return str(path)
+        except Exception as e:
+            logger.error(f"Failed to download media for message {message.id}: {e}")
+
+        return None
+
+
     def filter_by_keywords(self, messages: list[Message], keywords: Sequence[str]) -> list[Message]:
         """
         Filter messages, keeping only those that contain at least one target keyword.

@@ -21,7 +21,10 @@ class PostStatus(str, Enum):
 
 
 class Post(Base, TimestampMixin):
-    """SQLAlchemy model representing an AI-generated post for Telegram."""
+    """
+    SQLAlchemy model representing an AI-generated post for Telegram.
+    Acts as a state machine for the Celery publishing pipeline.
+    """
     
     __tablename__ = "posts"
 

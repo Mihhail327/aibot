@@ -1,6 +1,14 @@
 import logging
 from datetime import datetime, timedelta, UTC
 import jwt
+import bcrypt
+
+# Fix passlib 1.7.4 compatibility with bcrypt >= 4.1.0 (trapped AttributeError: module 'bcrypt' has no attribute '__about__')
+if not hasattr(bcrypt, "__about__"):
+    class _BcryptAbout:
+        __version__ = getattr(bcrypt, "__version__", "4.0.1")
+    bcrypt.__about__ = _BcryptAbout()  # type: ignore[attr-defined]
+
 from passlib.context import CryptContext
 
 from app.core.config import settings
@@ -57,6 +65,9 @@ def verify_invite_token(token: str) -> bool:
     """
     Verify the validity of a registration invite link.
     """
+    if settings.INVITE_TOKEN and token == settings.INVITE_TOKEN.get_secret_value():
+        return True
+
     try:
         payload = jwt.decode(
             token, 

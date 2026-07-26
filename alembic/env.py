@@ -15,9 +15,9 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from app.core.config import settings
 from app.core.database import Base
-# ВАЖНО: Импортируем модель, чтобы Alembic увидел ее в Base.metadata
+# ВАЖНО: Импортируем все модели, чтобы Alembic увидел их в Base.metadata
+from app.domains.auth.models import AdminSettings # noqa: F401
 from app.domains.sources.models import Source # noqa: F401
-
 from app.domains.keywords.models import Keyword # noqa: F401
 from app.domains.news.models import NewsItem # noqa: F401
 from app.domains.posts.models import Post # noqa: F401

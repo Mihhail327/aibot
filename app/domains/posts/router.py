@@ -1,5 +1,6 @@
 import uuid
 from typing import Sequence
+from pydantic import BaseModel, Field
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,9 +10,22 @@ from app.domains.posts.models import Post
 from app.domains.posts.repository import PostRepository
 from app.domains.posts.schemas import PostCreate, PostResponse, PostUpdate
 from app.domains.posts.service import PostService
+from app.infrastructure.ai.openai_client import OpenAIGenerator
+
 
 # Изолированный роутер для сгенерированных постов
 router = APIRouter(prefix="/posts", tags=["Posts"])
+
+
+class GenerateTestRequest(BaseModel):
+    """Request schema for manual AI generation testing."""
+    title: str = Field(..., description="News title for generation")
+    text: str = Field(..., description="News text or description")
+
+
+class GenerateTestResponse(BaseModel):
+    """Response schema containing the generated AI post."""
+    generated_text: str = Field(..., description="Generated AI post content")
 
 
 def get_post_service(session: AsyncSession = Depends(get_db)) -> PostService:
@@ -20,6 +34,16 @@ def get_post_service(session: AsyncSession = Depends(get_db)) -> PostService:
     """
     repository = PostRepository(session)
     return PostService(repository)
+
+
+@router.post("/generate", response_model=GenerateTestResponse, status_code=status.HTTP_200_OK)
+async def test_ai_generation(payload: GenerateTestRequest) -> GenerateTestResponse:
+    """
+    Manual testing endpoint for AI post generation via OpenAI GPT-4 using title and text.
+    """
+    ai_generator = OpenAIGenerator()
+    generated_content = await ai_generator.generate_post(title=payload.title, text=payload.text)
+    return GenerateTestResponse(generated_text=generated_content)
 
 
 @router.post("/", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
@@ -41,15 +65,6 @@ async def get_posts_list(
     return await service.get_all_posts(skip=skip, limit=limit)
 
 
-@router.get("/{post_id}", response_model=PostResponse, status_code=status.HTTP_200_OK)
-async def get_post_by_id(
-    post_id: int,
-    service: PostService = Depends(get_post_service),
-) -> Post:
-    """Retrieve a specific post by its ID."""
-    return await service.get_post(post_id)
-
-
 @router.get("/news/{news_id}", response_model=PostResponse, status_code=status.HTTP_200_OK)
 async def get_post_by_news_id(
     news_id: uuid.UUID,
@@ -57,6 +72,15 @@ async def get_post_by_news_id(
 ) -> Post:
     """Retrieve a post linked to a specific news item UUID."""
     return await service.get_post_by_news(news_id)
+
+
+@router.get("/{post_id}", response_model=PostResponse, status_code=status.HTTP_200_OK)
+async def get_post_by_id(
+    post_id: int,
+    service: PostService = Depends(get_post_service),
+) -> Post:
+    """Retrieve a specific post by its ID."""
+    return await service.get_post(post_id)
 
 
 @router.patch("/{post_id}", response_model=PostResponse, status_code=status.HTTP_200_OK)
@@ -75,4 +99,4 @@ async def delete_post(
     service: PostService = Depends(get_post_service),
 ) -> None:
     """Delete a post."""
-    await service.delete_post(post_id)
+    await service.delete_post(post_id)

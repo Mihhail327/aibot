@@ -1,6 +1,5 @@
 from datetime import datetime, UTC
-
-from sqlalchemy.orm import Mapped, mapped_column, declarative_mixin
+from sqlalchemy.orm import Mapped, mapped_column, declarative_mixin, DeclarativeBase
 
 @declarative_mixin
 class TimestampMixin:
@@ -16,3 +15,7 @@ class TimestampMixin:
         onupdate=lambda: datetime.now(UTC),
         nullable=False
     )
+
+class Base(DeclarativeBase):
+    """Base declarative class for all models."""
+    pass

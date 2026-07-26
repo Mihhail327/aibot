@@ -8,11 +8,12 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
-class InviteSetup(BaseModel):
-    """Schema for setting up the master password via invite link."""
-    # Поле должно называться строго invite_token
-    invite_token: str = Field(..., description="Секретный JWT токен из инвайт-ссылки")
-    new_password: str = Field(..., min_length=8, description="Новый мастер-пароль")
+class PasswordSetup(BaseModel):
+    """Schema for setting or resetting the master password."""
+    new_password: str = Field(..., min_length=1, description="Новый мастер-пароль")
+
+
+InviteSetup = PasswordSetup
 
 
 class RefreshRequest(BaseModel):

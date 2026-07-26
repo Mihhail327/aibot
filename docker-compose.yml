@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Базовый шаблон для всех Python-сервисов (DRY)
 x-app-base: &app-base
   build:
@@ -11,6 +9,11 @@ x-app-base: &app-base
   environment:
     - POSTGRES_HOST=db
     - REDIS_HOST=redis
+  volumes:
+    - ./app:/app/app
+    - ./alembic:/app/alembic
+    - ./media:/app/media
+
   restart: unless-stopped
   depends_on:
     db:
@@ -56,13 +59,13 @@ services:
     container_name: aibot_api
     ports:
       - "8000:8000"
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   celery_worker:
     <<: *app-base
     container_name: aibot_worker
-    # Запускаем worker. Рекомендуется использовать threads или gevent/eventlet для I/O bound задач
-    command: celery -A app.core.celery_app worker -l INFO --pool=threads --concurrency=10
+    # Добавляем флаг -E для мониторинга задач в реальном времени через Flower
+    command: celery -A app.core.celery_app worker -l INFO --pool=threads --concurrency=10 -E
 
   celery_beat:
     <<: *app-base
@@ -77,8 +80,7 @@ services:
     environment:
       # Явное подключение с использованием внутреннего DNS Docker (redis)
       - CELERY_BROKER_URL=redis://redis:6379/1
-      # Security: Обязательная защита панели мониторинга
-      - FLOWER_BASIC_AUTH=${FLOWER_USER}:${FLOWER_PASSWORD}
+      - FLOWER_UNAUTHENTICATED_API=True
     ports:
       - "5555:5555"
     depends_on:

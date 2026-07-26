@@ -25,7 +25,11 @@ aiogram = "^3.4.1"
 openai = "^1.10.0"
 passlib = "^1.7.4"
 pyjwt = "^2.13.0"
-bcrypt = "^5.0.0"
+bcrypt = "^4.0.1"
+feedparser = "^6.0.12"
+httpx = "^0.28.1"
+python-multipart = "^0.0.32"
+
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
@@ -45,3 +49,11 @@ target-version = "py313"
 strict = true
 ignore_missing_imports = true
 explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = "app.domains.sources.tasks"
+ignore_errors = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"

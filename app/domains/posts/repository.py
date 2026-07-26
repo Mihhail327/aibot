@@ -21,7 +21,7 @@ class PostRepository:
 
     async def get_by_news_id(self, news_id: uuid.UUID) -> Post | None:
         """Fetch a post linked to a specific news item."""
-        # Используетс для предотвращения повторной генерации поста на одну новость
+        # Используется для предотвращения повторной генерации поста на одну новость
         stmt = select(Post).where(Post.news_id == news_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
@@ -39,9 +39,10 @@ class PostRepository:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def create(self, shema: PostCreate) -> Post:
+    async def create(self, schema: PostCreate) -> Post:
         """Create a new AI-generated post record."""
-        db_obj = Post(**shema.model_dump(exclude_unset=True))
+        # Распаковка валидированной Pydantic схемы в kwargs SQLAlchemy модели
+        db_obj = Post(**schema.model_dump(exclude_unset=True))
         self.session.add(db_obj)
 
         await self.session.commit()
@@ -49,7 +50,7 @@ class PostRepository:
         return db_obj
 
     async def update(self, db_obj: Post, schema: PostUpdate) -> Post:
-        """Update an existing post record (e.g., change stetus, set published_at)."""
+        """Update an existing post record (e.g., change status, set published_at)."""
         update_data = schema.model_dump(exclude_unset=True)
 
         for field, value in update_data.items():
