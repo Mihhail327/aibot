@@ -73,7 +73,7 @@ async def _run_parsing_pipeline() -> None:
                             news_item = await news_repo.create(news_schema)
                             saved_count += 1
                             
-                            process_and_publish_post.delay(
+                            process_and_publish_post.delay(  # type: ignore[operator] # pyright: ignore[reportCallIssue]
                                 news_id=str(news_item.id),
                                 title=news_item.title,
                                 text=news_item.raw_text,
@@ -101,7 +101,7 @@ async def _run_parsing_pipeline() -> None:
                             news_item = await news_repo.create(news_schema)
                             saved_count += 1
                             
-                            process_and_publish_post.delay(
+                            process_and_publish_post.delay(  # type: ignore[operator] # pyright: ignore[reportCallIssue]
                                 news_id=str(news_item.id),
                                 title=news_item.title,
                                 text=news_item.raw_text

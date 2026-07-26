@@ -49,7 +49,8 @@ class TelegramChannelParser:
             filename = f"media_{message.id}_{uuid.uuid4().hex[:8]}.jpg"
             target_path = os.path.join(download_dir, filename)
 
-            path = await self.client_wrapper.client.download_media(message, file=target_path)
+            path = await self.client_wrapper.client.download_media(message, file=target_path)  # type: ignore[arg-type] # pyright: ignore[reportArgumentType]
+
             if path and os.path.exists(path):
                 logger.info(f"Downloaded media for message {message.id}: {path}")
                 return str(path)

@@ -5,8 +5,9 @@ from app.core.database import async_session_maker
 from app.core.security import get_password_hash
 from app.domains.auth.models import AdminSettings
 
-async def main():
+async def main() -> None:
     password = sys.argv[1] if len(sys.argv) > 1 else "admin123"
+
     async with async_session_maker() as session:
         stmt = select(AdminSettings).limit(1)
         result = await session.execute(stmt)
