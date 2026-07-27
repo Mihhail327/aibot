@@ -1,14 +1,13 @@
+from typing import Any
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from unittest.mock import AsyncMock, MagicMock
 
 from app.api.deps import get_db_session, get_post_service
-from app.core.exceptions import NotFoundException
 from app.domains.posts.service import PostService
 
 @pytest.mark.asyncio
-async def test_health_check_endpoint(async_client: AsyncClient):
+async def test_health_check_endpoint(async_client: AsyncClient) -> None:
     response = await async_client.get("/health")
     assert response.status_code == 200
     data = response.json()
@@ -16,14 +15,14 @@ async def test_health_check_endpoint(async_client: AsyncClient):
     assert "version" in data
 
 @pytest.mark.asyncio
-async def test_custom_api_exception_handler(async_client: AsyncClient, auth_headers: dict[str, str]):
+async def test_custom_api_exception_handler(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     # Requesting non-existent source triggers NotFoundException (subclass of BaseAPIException)
     response = await async_client.get("/api/v1/sources/999999", headers=auth_headers)
     assert response.status_code == 404
     assert "detail" in response.json()
 
 @pytest.mark.asyncio
-async def test_cors_middleware_headers(async_client: AsyncClient):
+async def test_cors_middleware_headers(async_client: AsyncClient) -> None:
     response = await async_client.get(
         "/health",
         headers={
@@ -32,9 +31,8 @@ async def test_cors_middleware_headers(async_client: AsyncClient):
     )
     assert response.status_code == 200
 
-
 @pytest.mark.asyncio
-async def test_deps_get_db_session(mocker):
+async def test_deps_get_db_session(mocker: Any) -> None:
     mock_session = AsyncMock()
     mock_session.commit = AsyncMock()
     mock_session.close = AsyncMock()
@@ -53,7 +51,7 @@ async def test_deps_get_db_session(mocker):
     mock_session.close.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_deps_get_db_session_rollback_on_error(mocker):
+async def test_deps_get_db_session_rollback_on_error(mocker: Any) -> None:
     mock_session = AsyncMock()
     mock_session.rollback = AsyncMock()
     mock_session.close = AsyncMock()
@@ -71,7 +69,7 @@ async def test_deps_get_db_session_rollback_on_error(mocker):
     mock_session.rollback.assert_called_once()
     mock_session.close.assert_called_once()
 
-def test_deps_get_post_service():
+def test_deps_get_post_service() -> None:
     mock_session = MagicMock()
     service = get_post_service(session=mock_session)
     assert isinstance(service, PostService)

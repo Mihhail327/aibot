@@ -9,6 +9,7 @@ from app.domains.news.router import router as news_router
 from app.domains.keywords.router import router as keywords_router
 from app.domains.posts.router import router as posts_router
 from app.domains.auth.router import router as auth_router
+from app.domains.logs.router import router as logs_router
 
 # 1. Инициализация приложения
 app = FastAPI(
@@ -48,6 +49,7 @@ app.include_router(sources_router, prefix="/api/v1")
 app.include_router(news_router, prefix="/api/v1")
 app.include_router(keywords_router, prefix="/api/v1")
 app.include_router(posts_router, prefix="/api/v1")
+app.include_router(logs_router, prefix="/api/v1")
 
 @app.get("/health", tags=["System"])
 async def health_check() -> dict[str, str]:

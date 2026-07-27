@@ -34,11 +34,10 @@ class SourceCreate(SourceBase):
 class SourceUpdate(BaseModel):
     """Schema for partial updates (PATCH). All fields are optional."""
     
-    # При обновлении все поля опциональны (могут быть None), если клиент их не передал
-    name: Optional[str] = Field(None, max_length=255)
-    url: Optional[str] = Field(None, max_length=500)
-    is_active: Optional[bool] = Field(None)
-    source_type: Optional[SourceType] = Field(None)
+    name: Optional[str] = Field(default=None, max_length=255)
+    url: Optional[str] = Field(default=None, max_length=500)
+    is_active: Optional[bool] = Field(default=None)
+    source_type: Optional[SourceType] = Field(default=None)
 
 
 class SourceResponse(SourceBase):

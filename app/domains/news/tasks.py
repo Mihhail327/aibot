@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, UTC
+from typing import Any, cast
 from celery import shared_task
 
 from app.core.config import settings
@@ -73,7 +74,7 @@ async def _run_parsing_pipeline() -> None:
                             news_item = await news_repo.create(news_schema)
                             saved_count += 1
                             
-                            process_and_publish_post.delay(  # type: ignore[operator] # pyright: ignore[reportCallIssue]
+                            cast(Any, process_and_publish_post).delay(
                                 news_id=str(news_item.id),
                                 title=news_item.title,
                                 text=news_item.raw_text,
@@ -101,7 +102,7 @@ async def _run_parsing_pipeline() -> None:
                             news_item = await news_repo.create(news_schema)
                             saved_count += 1
                             
-                            process_and_publish_post.delay(  # type: ignore[operator] # pyright: ignore[reportCallIssue]
+                            cast(Any, process_and_publish_post).delay(
                                 news_id=str(news_item.id),
                                 title=news_item.title,
                                 text=news_item.raw_text

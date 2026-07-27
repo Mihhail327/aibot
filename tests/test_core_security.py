@@ -1,4 +1,3 @@
-import pytest
 import jwt
 from app.core.config import settings
 from app.core.security import (
@@ -9,7 +8,7 @@ from app.core.security import (
     verify_invite_token,
 )
 
-def test_password_hashing():
+def test_password_hashing() -> None:
     password = "MySecurePassword123"
     hashed = get_password_hash(password)
     
@@ -17,7 +16,7 @@ def test_password_hashing():
     assert verify_password(password, hashed) is True
     assert verify_password("WrongPassword", hashed) is False
 
-def test_create_access_token():
+def test_create_access_token() -> None:
     token = create_access_token(subject="admin")
     assert isinstance(token, str)
     
@@ -30,7 +29,7 @@ def test_create_access_token():
     assert payload["type"] == "access"
     assert "exp" in payload
 
-def test_create_refresh_token():
+def test_create_refresh_token() -> None:
     token = create_refresh_token(subject="admin")
     assert isinstance(token, str)
     
@@ -43,7 +42,7 @@ def test_create_refresh_token():
     assert payload["type"] == "refresh"
     assert "exp" in payload
 
-def test_verify_invite_token():
+def test_verify_invite_token() -> None:
     if settings.INVITE_TOKEN:
         assert verify_invite_token(settings.INVITE_TOKEN.get_secret_value()) is True
 

@@ -9,8 +9,11 @@ class TokenResponse(BaseModel):
 
 
 class PasswordSetup(BaseModel):
-    """Schema for setting or resetting the master password."""
-    new_password: str = Field(..., min_length=1, description="Новый мастер-пароль")
+    """
+    Schema for master password setup or reset.
+    """
+    password: str = Field(..., min_length=8, description="Новый мастер-пароль")
+    invite_token: str = Field(..., description="Токен приглашения для установки пароля")
 
 
 InviteSetup = PasswordSetup

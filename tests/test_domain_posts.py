@@ -1,19 +1,20 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from unittest.mock import AsyncMock, MagicMock
 
 from app.core.exceptions import DuplicateResourceException, NotFoundException
-from app.domains.posts.models import Post, PostStatus
+from app.domains.posts.models import PostStatus
 from app.domains.posts.repository import PostRepository
 from app.domains.posts.schemas import PostCreate, PostUpdate
 from app.domains.posts.service import PostService
 from app.domains.posts.tasks import process_and_publish_post, _async_process_and_publish
 
 @pytest.mark.asyncio
-async def test_post_repository_crud(db_session: AsyncSession):
+async def test_post_repository_crud(db_session: AsyncSession) -> None:
     repo = PostRepository(db_session)
     news_id = uuid.uuid4()
 
@@ -56,7 +57,7 @@ async def test_post_repository_crud(db_session: AsyncSession):
     assert await repo.get_by_id(post.id) is None
 
 @pytest.mark.asyncio
-async def test_post_service_business_logic(db_session: AsyncSession):
+async def test_post_service_business_logic(db_session: AsyncSession) -> None:
     repo = PostRepository(db_session)
     service = PostService(repo)
 
@@ -99,7 +100,7 @@ async def test_post_service_business_logic(db_session: AsyncSession):
         await service.get_post(post1.id)
 
 @pytest.mark.asyncio
-async def test_posts_api_endpoints(async_client: AsyncClient, auth_headers: dict[str, str], mocker):
+async def test_posts_api_endpoints(async_client: AsyncClient, auth_headers: dict[str, str], mocker: Any) -> None:
     # Test manual AI generation endpoint
     mock_ai = AsyncMock()
     mock_ai.generate_post.return_value = "Generated Telegram post content 🎉"
@@ -156,7 +157,7 @@ async def test_posts_api_endpoints(async_client: AsyncClient, auth_headers: dict
     assert del_resp.status_code == 204
 
 @pytest.mark.asyncio
-async def test_async_process_and_publish(db_session: AsyncSession, mocker):
+async def test_async_process_and_publish(db_session: AsyncSession, mocker: Any) -> None:
     news_id = str(uuid.uuid4())
     
     mock_session_ctx = MagicMock()
@@ -183,7 +184,7 @@ async def test_async_process_and_publish(db_session: AsyncSession, mocker):
     assert res_duplicate is True
 
 @pytest.mark.asyncio
-async def test_async_process_and_publish_ai_failure(db_session: AsyncSession, mocker):
+async def test_async_process_and_publish_ai_failure(db_session: AsyncSession, mocker: Any) -> None:
     news_id = str(uuid.uuid4())
     
     mock_session_ctx = MagicMock()
@@ -203,7 +204,7 @@ async def test_async_process_and_publish_ai_failure(db_session: AsyncSession, mo
     assert "Celery retry triggered" in str(exc.value)
 
 @pytest.mark.asyncio
-async def test_async_process_and_publish_telegram_failure(db_session: AsyncSession, mocker):
+async def test_async_process_and_publish_telegram_failure(db_session: AsyncSession, mocker: Any) -> None:
     news_id = str(uuid.uuid4())
     
     mock_session_ctx = MagicMock()
@@ -226,7 +227,7 @@ async def test_async_process_and_publish_telegram_failure(db_session: AsyncSessi
         await _async_process_and_publish(task_mock, news_id, "Title", "Text")
     assert "Celery retry on pub failure" in str(exc.value)
 
-def test_process_and_publish_post_task(mocker):
+def test_process_and_publish_post_task(mocker: Any) -> None:
     mocker.patch("app.domains.posts.tasks._async_process_and_publish", return_value=True)
     res = process_and_publish_post("123", "Title", "Text")
     assert res is True

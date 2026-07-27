@@ -1,26 +1,25 @@
+from typing import Any
 import pytest
-from unittest.mock import MagicMock
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import DuplicateResourceException, NotFoundException
-from app.domains.sources.models import Source
 from app.domains.sources.repository import SourceRepository
-from app.domains.sources.schemas import SourceCreate, SourceUpdate
+from app.domains.sources.schemas import SourceCreate, SourceType, SourceUpdate
 from app.domains.sources.service import SourceService
 from app.domains.sources.tasks import test_parsing_task
 
 @pytest.mark.asyncio
-async def test_source_repository_crud(db_session: AsyncSession):
+async def test_source_repository_crud(db_session: AsyncSession) -> None:
     repo = SourceRepository(db_session)
     
     # 1. Create
-    schema = SourceCreate(name="TechCrunch", url="https://techcrunch.com/feed", source_type="rss", is_active=True)
+    schema = SourceCreate(name="TechCrunch", url="https://techcrunch.com/feed", source_type=SourceType.RSS, is_active=True)
     source = await repo.create(schema)
     assert source.id is not None
     assert source.name == "TechCrunch"
     assert source.url == "https://techcrunch.com/feed"
-    assert source.source_type == "rss"
+    assert source.source_type == SourceType.RSS
     assert source.is_active is True
 
     # 2. Get by ID & Get by URL
@@ -51,20 +50,20 @@ async def test_source_repository_crud(db_session: AsyncSession):
     assert deleted is None
 
 @pytest.mark.asyncio
-async def test_source_service_business_logic(db_session: AsyncSession):
+async def test_source_service_business_logic(db_session: AsyncSession) -> None:
     repo = SourceRepository(db_session)
     service = SourceService(repo)
 
     # 1. Create
     source1 = await service.create_source(
-        SourceCreate(name="TG News", url="@tg_news", source_type="telegram")
+        SourceCreate(name="TG News", url="@tg_news", source_type=SourceType.TELEGRAM)
     )
     assert source1.name == "TG News"
 
     # 2. Duplicate URL check on create
     with pytest.raises(DuplicateResourceException):
         await service.create_source(
-            SourceCreate(name="TG News Dup", url="@tg_news", source_type="telegram")
+            SourceCreate(name="TG News Dup", url="@tg_news", source_type=SourceType.TELEGRAM)
         )
 
     # 3. Get missing source
@@ -73,7 +72,7 @@ async def test_source_service_business_logic(db_session: AsyncSession):
 
     # 4. Update source & duplicate URL check
     source2 = await service.create_source(
-        SourceCreate(name="TG News 2", url="@tg_news_2", source_type="telegram")
+        SourceCreate(name="TG News 2", url="@tg_news_2", source_type=SourceType.TELEGRAM)
     )
     with pytest.raises(DuplicateResourceException):
         await service.update_source(
@@ -86,7 +85,7 @@ async def test_source_service_business_logic(db_session: AsyncSession):
         await service.get_source(source1.id)
 
 @pytest.mark.asyncio
-async def test_sources_api_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]):
+async def test_sources_api_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     # Create source via API
     create_payload = {"name": "HackerNews", "url": "https://news.ycombinator.com/rss", "source_type": "rss"}
     response = await async_client.post("/api/v1/sources/", json=create_payload, headers=auth_headers)
@@ -119,16 +118,13 @@ async def test_sources_api_endpoints(async_client: AsyncClient, auth_headers: di
     del_resp = await async_client.delete(f"/api/v1/sources/{source_id}", headers=auth_headers)
     assert del_resp.status_code == 204
 
-def test_source_task_execution(mocker):
+def test_source_task_execution(mocker: Any) -> None:
     # Test Celery test_parsing_task
     res = test_parsing_task.apply(args=["https://example.com/rss"])
     assert res.result == {"status": "success", "url": "https://example.com/rss"}
 
-def test_source_task_retry(mocker):
+def test_source_task_retry(mocker: Any) -> None:
     mocker.patch("time.sleep", side_effect=ValueError("Parsing failed"))
     with pytest.raises(Exception) as exc:
         test_parsing_task.run("https://example.com/fail")
     assert "Parsing failed" in str(exc.value)
-
-
-

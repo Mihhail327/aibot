@@ -1,5 +1,5 @@
 from typing import Sequence
-
+from app.core.celery_app import celery_app
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,7 @@ from app.domains.sources.models import Source
 from app.domains.sources.repository import SourceRepository
 from app.domains.sources.schemas import SourceCreate, SourceResponse, SourceUpdate
 from app.domains.sources.service import SourceService
+
 
 router = APIRouter(prefix="/sources", tags=["Sources"])
 
@@ -53,3 +54,31 @@ async def delete_source(
     service: SourceService = Depends(get_source_service),
 ) -> None:
     await service.delete_source(source_id)
+
+# ---------------------------------------------------------
+# MANUAL CONTROL ENDPOINTS
+# ---------------------------------------------------------
+
+@router.post("/parse", status_code=status.HTTP_202_ACCEPTED)
+async def trigger_parsing() -> dict[str, str]:
+    """
+    Manually trigger parsing for all active sources.
+    """
+    # Асинхронный запуск задачи в Celery (не блокирует Event Loop)
+    task = celery_app.send_task("news.parse_channels")
+    return {"message": "Парсинг всех источников запущен", "task_id": str(task.id)}
+
+@router.post("/{source_id}/parse", status_code=status.HTTP_202_ACCEPTED)
+async def trigger_parsing_for_source(
+    source_id: int,
+    service: SourceService = Depends(get_source_service),
+) -> dict[str, str]:
+    """
+    Manually trigger parsing for a specific source.
+    """
+    # Валидация существования источника перед запуском задачи
+    await service.get_source(source_id)
+    
+    # Запуск парсинга только для переданного источника
+    task = celery_app.send_task("news.parse_channels", kwargs={"source_id": source_id})
+    return {"message": f"Парсинг источника {source_id} запущен", "task_id": str(task.id)}

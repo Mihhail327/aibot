@@ -8,7 +8,7 @@ from app.domains.keywords.schemas import KeywordCreate, KeywordUpdate
 from app.domains.keywords.service import KeywordService
 
 @pytest.mark.asyncio
-async def test_keyword_repository_crud(db_session: AsyncSession):
+async def test_keyword_repository_crud(db_session: AsyncSession) -> None:
     repo = KeywordRepository(db_session)
     
     # 1. Create
@@ -39,7 +39,7 @@ async def test_keyword_repository_crud(db_session: AsyncSession):
     assert deleted is None
 
 @pytest.mark.asyncio
-async def test_keyword_service_business_logic(db_session: AsyncSession):
+async def test_keyword_service_business_logic(db_session: AsyncSession) -> None:
     repo = KeywordRepository(db_session)
     service = KeywordService(repo)
 
@@ -66,7 +66,7 @@ async def test_keyword_service_business_logic(db_session: AsyncSession):
         await service.get_keyword(kw1.id)
 
 @pytest.mark.asyncio
-async def test_keywords_api_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]):
+async def test_keywords_api_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     # Create keyword
     create_resp = await async_client.post(
         "/api/v1/keywords/",

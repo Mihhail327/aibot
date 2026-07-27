@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from app.core.exceptions import DuplicateResourceException, NotFoundException
 from app.domains.news.repository import NewsItemRepository
@@ -14,7 +15,7 @@ from app.domains.sources.models import Source
 from app.domains.keywords.models import Keyword
 
 @pytest.mark.asyncio
-async def test_news_repository_crud(db_session: AsyncSession):
+async def test_news_repository_crud(db_session: AsyncSession) -> None:
     repo = NewsItemRepository(db_session)
 
     # 1. Create
@@ -55,7 +56,7 @@ async def test_news_repository_crud(db_session: AsyncSession):
     assert await repo.get_by_id(news.id) is None
 
 @pytest.mark.asyncio
-async def test_news_service_business_logic(db_session: AsyncSession):
+async def test_news_service_business_logic(db_session: AsyncSession) -> None:
     repo = NewsItemRepository(db_session)
     service = NewsItemService(repo)
 
@@ -101,7 +102,7 @@ async def test_news_service_business_logic(db_session: AsyncSession):
         await service.get_news_item(news1.id)
 
 @pytest.mark.asyncio
-async def test_news_api_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]):
+async def test_news_api_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     payload = {
         "title": "Quantum Computing Milestone",
         "url": "https://tech.example/quantum",
@@ -139,7 +140,7 @@ async def test_news_api_endpoints(async_client: AsyncClient, auth_headers: dict[
     assert del_resp.status_code == 204
 
 @pytest.mark.asyncio
-async def test_run_parsing_pipeline(db_session: AsyncSession, mocker):
+async def test_run_parsing_pipeline(db_session: AsyncSession, mocker: Any) -> None:
     # Seed a Telegram source and an RSS source
     tg_source = Source(name="TG Channel", url="https://t.me/testchannel", is_active=True, source_type="telegram")
     rss_source = Source(name="RSS Feed", url="https://feed.com/rss", is_active=True, source_type="rss")
@@ -161,6 +162,7 @@ async def test_run_parsing_pipeline(db_session: AsyncSession, mocker):
     mock_tg_parser = MagicMock()
     mock_tg_parser.fetch_recent_messages = AsyncMock(return_value=[mock_tg_msg])
     mock_tg_parser.filter_by_keywords.return_value = [mock_tg_msg]
+    mock_tg_parser.download_media_for_message = AsyncMock(return_value=None)
     mocker.patch("app.domains.news.tasks.TelegramChannelParser", return_value=mock_tg_parser)
 
     # Mock RSS parser
@@ -187,7 +189,7 @@ async def test_run_parsing_pipeline(db_session: AsyncSession, mocker):
 
     assert mock_delay.call_count == 2
 
-def test_parse_channels_task(mocker):
+def test_parse_channels_task(mocker: Any) -> None:
     mocker.patch("app.domains.news.tasks._run_parsing_pipeline", return_value=None)
     res = parse_channels_task()
     assert res == "Сбор новостей успешно завершен."

@@ -1,4 +1,3 @@
-import pytest
 from app.core.config import settings
 from app.core.exceptions import (
     BaseAPIException,
@@ -7,12 +6,12 @@ from app.core.exceptions import (
     ExternalServiceException,
 )
 
-def test_settings_properties():
+def test_settings_properties() -> None:
     assert "postgresql+psycopg://" in settings.SQLALCHEMY_DATABASE_URI
     assert settings.REDIS_CACHE_URL.startswith("redis://")
     assert settings.REDIS_CELERY_URL.startswith("redis://")
 
-def test_custom_exceptions():
+def test_custom_exceptions() -> None:
     exc = BaseAPIException(detail="Base error", status_code=400)
     assert exc.status_code == 400
     assert exc.detail == "Base error"

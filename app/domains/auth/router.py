@@ -11,6 +11,7 @@ from app.core.security import (
     create_refresh_token,
     get_password_hash,
     verify_password,
+    verify_invite_token,  
 )
 from app.domains.auth.models import AdminSettings
 from app.domains.auth.schemas import InviteSetup, RefreshRequest, TokenResponse
@@ -30,11 +31,13 @@ async def login(
     admin_record = result.scalar_one_or_none()
 
     if not admin_record:
-        # При первом входе автоматически инициализируем мастер-пароль введенным значением
-        admin_record = AdminSettings(password_hash=get_password_hash(form_data.password))
-        session.add(admin_record)
-        await session.commit()
-    elif not verify_password(form_data.password, admin_record.password_hash):
+        # Запрет несанкционированной инициализации при логине
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Мастер-пароль еще не настроен. Используйте /auth/setup с invite_token."
+        )
+        
+    if not verify_password(form_data.password, admin_record.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect master password",
@@ -59,7 +62,10 @@ async def refresh_token(schema: RefreshRequest) -> dict[str, str]:
             algorithms=["HS256"]
         )
         if payload.get("type") != "refresh":
-            raise HTTPException(status_code=401, detail="Invalid token type")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, 
+                detail="Invalid token type"
+            )
             
         return {
             "access_token": create_access_token(),
@@ -67,7 +73,10 @@ async def refresh_token(schema: RefreshRequest) -> dict[str, str]:
             "token_type": "bearer"
         }
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Invalid refresh token"
+        )
 
 
 @router.post("/setup", status_code=status.HTTP_200_OK)
@@ -75,12 +84,19 @@ async def setup_master_password(
     schema: InviteSetup, 
     session: AsyncSession = Depends(get_db)
 ) -> dict[str, str]:
-    """Set or reset the master password."""
+    """Set or reset the master password using a valid invite token."""
+    # Строгая валидация токена приглашения
+    if not verify_invite_token(schema.invite_token):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or expired invite token"
+        )
+
     stmt = select(AdminSettings).limit(1)
     result = await session.execute(stmt)
     admin_record = result.scalar_one_or_none()
 
-    new_hash = get_password_hash(schema.new_password)
+    new_hash = get_password_hash(schema.password)
 
     if admin_record:
         # Обновление существующего пароля

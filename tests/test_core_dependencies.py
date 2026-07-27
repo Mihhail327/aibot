@@ -6,13 +6,13 @@ from app.core.dependencies import get_current_admin
 from app.core.security import create_access_token, create_refresh_token
 
 @pytest.mark.asyncio
-async def test_get_current_admin_valid():
+async def test_get_current_admin_valid() -> None:
     token = create_access_token(subject="admin")
     sub = await get_current_admin(token=token)
     assert sub == "admin"
 
 @pytest.mark.asyncio
-async def test_get_current_admin_invalid_token_type():
+async def test_get_current_admin_invalid_token_type() -> None:
     token = create_refresh_token(subject="admin")
     with pytest.raises(HTTPException) as exc_info:
         await get_current_admin(token=token)
@@ -20,7 +20,7 @@ async def test_get_current_admin_invalid_token_type():
     assert exc_info.value.detail == "Could not validate credentials"
 
 @pytest.mark.asyncio
-async def test_get_current_admin_missing_sub():
+async def test_get_current_admin_missing_sub() -> None:
     token = jwt.encode(
         {"type": "access"},
         settings.SECRET_KEY.get_secret_value(),
@@ -31,7 +31,7 @@ async def test_get_current_admin_missing_sub():
     assert exc_info.value.status_code == 401
 
 @pytest.mark.asyncio
-async def test_get_current_admin_corrupted_token():
+async def test_get_current_admin_corrupted_token() -> None:
     with pytest.raises(HTTPException) as exc_info:
         await get_current_admin(token="invalid.token.str")
     assert exc_info.value.status_code == 401

@@ -10,11 +10,36 @@ from app.domains.posts.models import Post
 from app.domains.posts.repository import PostRepository
 from app.domains.posts.schemas import PostCreate, PostResponse, PostUpdate
 from app.domains.posts.service import PostService
-from app.infrastructure.ai.openai_client import OpenAIGenerator
 
+# Инфраструктурные импорты (убедись, что пути соответствуют твоей архитектуре)
+from app.domains.news.repository import NewsItemRepository
+from app.infrastructure.ai.openai_client import OpenAIGenerator
+from app.infrastructure.telegram.publisher import TelegramPublisher
 
 # Изолированный роутер для сгенерированных постов
 router = APIRouter(prefix="/posts", tags=["Posts"])
+
+
+def get_post_service(session: AsyncSession = Depends(get_db)) -> PostService:
+    """
+    Dependency Injection factory for PostService.
+    Assembles the complete object graph (repositories and external adapters).
+    """
+    # Инициализация слоя данных (Data Layer)
+    post_repository = PostRepository(session)
+    news_repository = NewsItemRepository(session)
+    
+    # Инициализация слоя адаптеров (Infrastructure Layer)
+    ai_generator = OpenAIGenerator()
+    telegram_publisher = TelegramPublisher()
+
+    # Сборка и возврат сервиса-оркестратора
+    return PostService(
+        repository=post_repository,
+        news_repository=news_repository,
+        ai_generator=ai_generator,
+        telegram_publisher=telegram_publisher
+    )
 
 
 class GenerateTestRequest(BaseModel):
@@ -28,14 +53,6 @@ class GenerateTestResponse(BaseModel):
     generated_text: str = Field(..., description="Generated AI post content")
 
 
-def get_post_service(session: AsyncSession = Depends(get_db)) -> PostService:
-    """
-    Dependency Injection factory for PostService.
-    """
-    repository = PostRepository(session)
-    return PostService(repository)
-
-
 @router.post("/generate", response_model=GenerateTestResponse, status_code=status.HTTP_200_OK)
 async def test_ai_generation(payload: GenerateTestRequest) -> GenerateTestResponse:
     """
@@ -46,12 +63,37 @@ async def test_ai_generation(payload: GenerateTestRequest) -> GenerateTestRespon
     return GenerateTestResponse(generated_text=generated_content)
 
 
+@router.post("/generate/{news_id}", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
+async def generate_post_from_news(
+    news_id: uuid.UUID,
+    service: PostService = Depends(get_post_service),
+) -> Post:
+    """
+    Generate an AI post for a specific news item and save it to the database.
+    Status will be set to GENERATED.
+    """
+    # Вся логика работы с OpenAI скрыта в сервисном слое
+    return await service.generate_and_save_post(news_id)
+
+
+@router.post("/{post_id}/publish", response_model=PostResponse, status_code=status.HTTP_200_OK)
+async def publish_post_to_telegram(
+    post_id: int,
+    service: PostService = Depends(get_post_service),
+) -> Post:
+    """
+    Publish a previously generated post to Telegram and update its status to PUBLISHED.
+    """
+    # Делегируем отправку сообщения и обновление статуса в БД
+    return await service.publish_post(post_id)
+
+
 @router.post("/", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 async def create_post(
     schema: PostCreate,
     service: PostService = Depends(get_post_service),
 ) -> Post:
-    """Create a new AI-generated post."""
+    """Create a new AI-generated post manually (bypass AI generation)."""
     return await service.create_post(schema)
 
 
@@ -89,7 +131,7 @@ async def update_post(
     schema: PostUpdate,
     service: PostService = Depends(get_post_service),
 ) -> Post:
-    """Partially update a post (e.g., manual text correction or status change)."""
+    """Partially update a post (e.g., manual text correction before publishing)."""
     return await service.update_post(post_id, schema)
 
 
@@ -99,4 +141,4 @@ async def delete_post(
     service: PostService = Depends(get_post_service),
 ) -> None:
     """Delete a post."""
-    await service.delete_post(post_id)
+    await service.delete_post(post_id)
