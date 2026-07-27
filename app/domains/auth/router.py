@@ -1,11 +1,12 @@
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -20,7 +21,9 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_db)
 ) -> dict[str, str]:
@@ -80,7 +83,9 @@ async def refresh_token(schema: RefreshRequest) -> dict[str, str]:
 
 
 @router.post("/setup", status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
 async def setup_master_password(
+    request: Request,
     schema: InviteSetup, 
     session: AsyncSession = Depends(get_db)
 ) -> dict[str, str]:

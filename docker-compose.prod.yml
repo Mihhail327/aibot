@@ -1,11 +1,10 @@
-# Базовый шаблон для всех Python-сервисов (DRY)
+# Продакшн конфигурация Docker Compose (Production-Ready)
 x-app-base: &app-base
   build:
     context: .
     dockerfile: Dockerfile
   env_file:
     - .env
-  # Переопределяем хосты для корректного разрешения DNS внутри Docker-сети
   environment:
     - POSTGRES_HOST=db
     - REDIS_HOST=redis
@@ -25,14 +24,12 @@ services:
   # === INFRASTRUCTURE LAYER ===
   db:
     image: postgres:15.5-alpine
-    container_name: aibot_postgres
+    container_name: aibot_postgres_prod
     restart: unless-stopped
     env_file:
       - .env
-    ports:
-      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_prod:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -41,12 +38,10 @@ services:
 
   redis:
     image: redis:7.2.3-alpine
-    container_name: aibot_redis
+    container_name: aibot_redis_prod
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redis_data_prod:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -56,31 +51,29 @@ services:
   # === APPLICATION LAYER ===
   api:
     <<: *app-base
-    container_name: aibot_api
+    container_name: aibot_api_prod
     ports:
       - "8000:8000"
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"
 
   celery_worker:
     <<: *app-base
-    container_name: aibot_worker
-    # Добавляем флаг -E для мониторинга задач в реальном времени через Flower
+    container_name: aibot_worker_prod
     command: celery -A app.core.celery_app worker -l INFO --pool=threads --concurrency=10 -E
 
   celery_beat:
     <<: *app-base
-    container_name: aibot_beat
+    container_name: aibot_beat_prod
     command: celery -A app.core.celery_app beat -l INFO
 
   # === MONITORING LAYER ===
   flower:
     image: mher/flower:2.0.1
-    container_name: aibot_flower
+    container_name: aibot_flower_prod
     restart: unless-stopped
     environment:
-      # Явное подключение с использованием внутреннего DNS Docker (redis)
       - CELERY_BROKER_URL=redis://redis:6379/1
-      - BASIC_AUTH=${FLOWER_BASIC_AUTH:-}
+      - BASIC_AUTH=${FLOWER_BASIC_AUTH:-admin:change_me_in_prod}
     ports:
       - "5555:5555"
     depends_on:
@@ -90,5 +83,5 @@ services:
         condition: service_started
 
 volumes:
-  postgres_data:
-  redis_data:
+  postgres_data_prod:
+  redis_data_prod:

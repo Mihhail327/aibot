@@ -1,6 +1,8 @@
 import re
 import logging
+from typing import Any
 from openai import AsyncOpenAI, OpenAIError
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 from app.infrastructure.ai.interfaces import BaseAIGenerator
@@ -15,6 +17,11 @@ def _markdown_to_telegram_html(text: str) -> str:
     # Заменяем **жирный** на <b>жирный</b>
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
     return text
+
+
+def _should_retry_openai(exc: BaseException) -> bool:
+    """Retry on transient OpenAI errors, excluding quota issues."""
+    return isinstance(exc, OpenAIError) and "insufficient_quota" not in str(exc)
 
 
 class OpenAIGenerator(BaseAIGenerator):
@@ -40,6 +47,24 @@ class OpenAIGenerator(BaseAIGenerator):
             "Обязательно добавь релевантные emoji и call to action в конце."
         )
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception(_should_retry_openai),
+        reraise=True,
+    )
+    async def _call_openai_api(self, user_prompt: str) -> Any:
+        """Execute OpenAI API completion with automatic exponential backoff retries."""
+        return await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=1000,
+        )
+
     async def generate_post(self, title: str, text: str) -> str:
         """
         Execute the API call to OpenAI.
@@ -50,22 +75,14 @@ class OpenAIGenerator(BaseAIGenerator):
         user_prompt = f"Заголовок: {title}\n\nТекст новости: {text}"
         
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.7,  # Оптимальный баланс между креативностью и точностью
-                max_tokens=1000,
-            )
+            response = await self._call_openai_api(user_prompt)
             
             # Извлекаем сгенерированный текст.
             generated_text = response.choices[0].message.content
             if not generated_text:
                 raise RuntimeError("OpenAI returned an empty response.")
                 
-            return generated_text
+            return str(generated_text)
 
         except OpenAIError as exc:
             logger.error(f"OpenAI API Error: {exc}")

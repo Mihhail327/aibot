@@ -29,6 +29,8 @@ bcrypt = "^4.0.1"
 feedparser = "^6.0.12"
 httpx = "^0.28.1"
 python-multipart = "^0.0.32"
+tenacity = "^8.2.3"
+slowapi = "^0.1.9"
 
 
 [tool.poetry.group.dev.dependencies]

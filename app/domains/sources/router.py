@@ -1,9 +1,10 @@
 from typing import Sequence
 from app.core.celery_app import celery_app
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.limiter import limiter
 
 from app.domains.sources.models import Source
 from app.domains.sources.repository import SourceRepository
@@ -60,7 +61,8 @@ async def delete_source(
 # ---------------------------------------------------------
 
 @router.post("/parse", status_code=status.HTTP_202_ACCEPTED)
-async def trigger_parsing() -> dict[str, str]:
+@limiter.limit("10/minute")
+async def trigger_parsing(request: Request) -> dict[str, str]:
     """
     Manually trigger parsing for all active sources.
     """
@@ -69,7 +71,9 @@ async def trigger_parsing() -> dict[str, str]:
     return {"message": "Парсинг всех источников запущен", "task_id": str(task.id)}
 
 @router.post("/{source_id}/parse", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit("10/minute")
 async def trigger_parsing_for_source(
+    request: Request,
     source_id: int,
     service: SourceService = Depends(get_source_service),
 ) -> dict[str, str]:

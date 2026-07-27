@@ -7,7 +7,7 @@ import bcrypt
 if not hasattr(bcrypt, "__about__"):
     class _BcryptAbout:
         __version__ = getattr(bcrypt, "__version__", "4.0.1")
-    bcrypt.__about__ = _BcryptAbout()  # type: ignore[assignment]
+    setattr(bcrypt, "__about__", _BcryptAbout())
 
 
 from passlib.context import CryptContext

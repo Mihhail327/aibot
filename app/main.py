@@ -2,8 +2,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
 from app.core.config import settings
 from app.core.exceptions import BaseAPIException
+from app.core.limiter import limiter
 from app.domains.sources.router import router as sources_router
 from app.domains.news.router import router as news_router
 from app.domains.keywords.router import router as keywords_router
@@ -18,6 +22,9 @@ app = FastAPI(
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 @app.get("/docs", include_in_schema=False)
 async def swagger_redirect() -> RedirectResponse:

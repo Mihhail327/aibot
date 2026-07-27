@@ -5,6 +5,7 @@ from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import FSInputFile
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 
@@ -21,6 +22,27 @@ class TelegramPublisher:
             token=settings.TELEGRAM_BOT_TOKEN.get_secret_value(),
             default=DefaultBotProperties(parse_mode=ParseMode.HTML)
         )
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True,
+    )
+    async def _dispatch_send(self, target: int | str, text: str, media_path: str | None) -> None:
+        """Helper method executing Telegram message dispatch with exponential backoff retries."""
+        has_media = bool(media_path and os.path.exists(media_path))
+
+        if has_media and media_path:
+            photo_file = FSInputFile(media_path)
+            # Ограничение подписи к фото в Telegram - 1024 символов
+            if len(text) <= 1024:
+                await self.bot.send_photo(chat_id=target, photo=photo_file, caption=text)
+            else:
+                await self.bot.send_photo(chat_id=target, photo=photo_file)
+                await self.bot.send_message(chat_id=target, text=text)
+        else:
+            # Отправка обычного текстового сообщения
+            await self.bot.send_message(chat_id=target, text=text)
 
     async def send_post(
         self, 
@@ -45,20 +67,8 @@ class TelegramPublisher:
         target = channel_id or settings.TARGET_CHANNEL_ID
 
         try:
+            await self._dispatch_send(target=target, text=text, media_path=media_path)
             has_media = bool(media_path and os.path.exists(media_path))
-
-            if has_media and media_path:
-                photo_file = FSInputFile(media_path)
-                # Ограничение подписи к фото в Telegram - 1024 символов
-                if len(text) <= 1024:
-                    await self.bot.send_photo(chat_id=target, photo=photo_file, caption=text)
-                else:
-                    await self.bot.send_photo(chat_id=target, photo=photo_file)
-                    await self.bot.send_message(chat_id=target, text=text)
-            else:
-                # Отправка обычного текстового сообщения
-                await self.bot.send_message(chat_id=target, text=text)
-
             logger.info(f"Post successfully published to {target} (has_media: {has_media})")
             return True
 
