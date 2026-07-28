@@ -110,7 +110,14 @@ class PostService:
             if news_item:
                 news_media = news_item.media_path
 
-        await self.telegram_publisher.send_post(text=post.generated_text, media_path=news_media)
+        try:
+            success = await self.telegram_publisher.send_post(text=post.generated_text, media_path=news_media)
+            if not success:
+                raise RuntimeError("Telegram publisher returned False status.")
+        except Exception:
+            update_schema = PostUpdate(status=PostStatus.FAILED)
+            await self.update_post(post_id, update_schema)
+            raise
 
         from datetime import datetime, UTC
         update_schema = PostUpdate(status=PostStatus.PUBLISHED, published_at=datetime.now(UTC))

@@ -15,6 +15,7 @@ class PostStatus(str, Enum):
     """Enumeration for AI post publication states."""
     
     NEW = "new"
+    PROCESSING = "processing"
     GENERATED = "generated"
     PUBLISHED = "published"
     FAILED = "failed"
@@ -33,8 +34,9 @@ class Post(Base, TimestampMixin):
     # Жесткая привязка к сырой новости с каскадным удалением
     news_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("news_items.id", ondelete="CASCADE"), 
-        nullable=False, 
-        index=True
+        nullable=False,
+        unique=True,
+        index=True,
     )
     
     # Текст, который вернул OpenAI

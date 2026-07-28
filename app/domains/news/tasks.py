@@ -18,14 +18,18 @@ from app.domains.posts.tasks import process_and_publish_post
 logger = logging.getLogger(__name__)
 
 
-async def _run_parsing_pipeline() -> None:
-    """Internal asynchronous pipeline for parsing and saving news from active sources."""
+async def _run_parsing_pipeline(source_id: int | None = None) -> None:
+    """Parse all active sources, or one active source selected by its ID."""
     async with async_session_maker() as session:
         source_repo = SourceRepository(session)
         keyword_repo = KeywordRepository(session)
         news_repo = NewsItemRepository(session)
 
-        active_sources = await source_repo.get_all(is_active=True)
+        if source_id is None:
+            active_sources = await source_repo.get_all(is_active=True)
+        else:
+            source = await source_repo.get_by_id(source_id)
+            active_sources = [source] if source and source.is_active else []
         if not active_sources:
             logger.info("Нет активных источников для парсинга.")
             return
@@ -112,11 +116,11 @@ async def _run_parsing_pipeline() -> None:
 
 
 @shared_task(name="news.parse_channels")  # type: ignore[misc, untyped-decorator, unused-ignore]
-def parse_channels_task() -> str:
+def parse_channels_task(source_id: int | None = None) -> str:
     """
     Celery task to trigger the parsing pipeline.
     Uses @shared_task to decouple from the specific Celery app instance.
     """
     logger.info("Запуск задачи сбора новостей...")
-    asyncio.run(_run_parsing_pipeline())
+    asyncio.run(_run_parsing_pipeline(source_id))
     return "Сбор новостей успешно завершен."

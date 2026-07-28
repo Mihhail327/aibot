@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     # Secret key for JWT encoding/decoding
     SECRET_KEY: SecretStr
 
+    # Media storage path
+    MEDIA_DIR: str = "media"
+
     # Настройки загрузки
     model_config = SettingsConfigDict(
         env_file=".env",

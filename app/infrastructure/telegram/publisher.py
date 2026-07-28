@@ -17,9 +17,12 @@ class TelegramPublisher:
 
     def __init__(self) -> None:
         """Initialize the Aiogram Bot instance."""
-        # Используем DefaultBotProperties для глобальной установки HTML-разметки
+        self._token = settings.TELEGRAM_BOT_TOKEN.get_secret_value()
+        self._init_bot()
+
+    def _init_bot(self) -> None:
         self.bot = Bot(
-            token=settings.TELEGRAM_BOT_TOKEN.get_secret_value(),
+            token=self._token,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML)
         )
 
@@ -65,6 +68,9 @@ class TelegramPublisher:
             Exception: Bubbles up network or API errors to trigger Celery retries.
         """
         target = channel_id or settings.TARGET_CHANNEL_ID
+
+        if hasattr(self.bot, "session") and getattr(self.bot.session, "closed", False):
+            self._init_bot()
 
         try:
             await self._dispatch_send(target=target, text=text, media_path=media_path)

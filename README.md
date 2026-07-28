@@ -82,19 +82,29 @@ cp .env.example .env
 
 ---
 
-## 🚀 Быстрый запуск
+## 🚀 Быстрый запуск и Docker-конфигурации
 
-### Режим разработки (Development)
+В проекте предусмотрено два файла конфигурации Docker Compose для разных окружений:
 
-```bash
-docker compose up -d --build
-```
+### 1. Режим разработки (`docker-compose.yml`)
+Предназначен для локальной разработки и отладки:
+- Запускает FastAPI через `uvicorn` с авто-перезагрузкой кода при изменениях (`--reload`).
+- Пробрасывает порты PostgreSQL (`5432`) и Redis (`6379`) наружу на хост-машину для прямого подключения через DBeaver / DataGrip / Redis Insight.
+- Команда запуска:
+  ```bash
+  docker compose up -d --build
+  ```
 
-### Продакшн режим (Production)
-
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
+### 2. Продакшн режим (`docker-compose.prod.yml`)
+Предназначен для боевых серверов (Production-Ready):
+- Запускает FastAPI в многопроцессном режиме (`--workers 4`) без перезагрузки для максимальной производительности.
+- **Безопасность**: Закравает порты базы данных и Redis от внешнего доступа (доступны только внутри приватной сети Docker).
+- Включает авторизацию для панели Flower (`FLOWER_BASIC_AUTH`).
+- Использует изолированные production-тома для хранения данных (`postgres_data_prod`).
+- Команда запуска:
+  ```bash
+  docker compose -f docker-compose.prod.yml up -d --build
+  ```
 
 ### Применение миграций базы данных
 

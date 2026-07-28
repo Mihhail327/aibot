@@ -28,7 +28,7 @@ async def _async_process_and_publish(
     news_uuid = UUID(news_id)
 
     async with async_session_maker() as session:
-        # 1. Проверяем, не был ли пост уже успешно опубликован (Защита от дублей)
+        # 1. Проверяем, не был ли пост уже успешно опубликован или взят в обработку (Защита от дублей)
         result = await session.execute(select(Post).where(Post.news_id == news_uuid))
         existing_post = result.scalar_one_or_none()
 
@@ -36,31 +36,41 @@ async def _async_process_and_publish(
             logger.info(f"Пост для новости {news_id} уже опубликован. Пропуск.")
             return True
 
+        if existing_post and existing_post.status == PostStatus.PROCESSING:
+            logger.info(f"Пост для новости {news_id} уже находится в обработке. Пропуск.")
+            return True
+
         ai_generator = OpenAIGenerator()
         publisher = TelegramPublisher()
 
-        # 2. Генерация текста через OpenAI (используем параметр text согласно контракту)
-        try:
-            generated_content = await ai_generator.generate_post(title=title, text=text)
-        except Exception as exc:
-            logger.error(f"Ошибка генерации AI для новости {news_id}: {exc}")
-            raise self.retry(exc=exc)
-
-        # 3. Сохранение или обновление статуса на GENERATED
+        # 2. Сохранение или обновление статуса в PROCESSING
         if not existing_post:
             post = Post(
                 news_id=news_uuid,
-                generated_text=generated_content,
-                status=PostStatus.GENERATED
+                generated_text="",
+                status=PostStatus.PROCESSING
             )
             session.add(post)
+            await session.commit()
+            await session.refresh(post)
         else:
             post = existing_post
+            post.status = PostStatus.PROCESSING
+            await session.commit()
+
+        # 3. Генерация текста через OpenAI
+        try:
+            generated_content = await ai_generator.generate_post(title=title, text=text)
             post.generated_text = generated_content
             post.status = PostStatus.GENERATED
-
-        await session.commit()
-        await session.refresh(post)
+            await session.commit()
+        except Exception as exc:
+            logger.error(f"Ошибка генерации AI для новости {news_id}: {exc}")
+            post.status = PostStatus.FAILED
+            await session.commit()
+            if hasattr(self, "retry"):
+                raise self.retry(exc=exc)
+            raise
 
         # 4. Публикация в Telegram (с картинкой или без)
         try:
@@ -77,7 +87,9 @@ async def _async_process_and_publish(
             logger.error(f"Ошибка публикации поста в Telegram для новости {news_id}: {exc}")
             post.status = PostStatus.FAILED
             await session.commit()
-            raise self.retry(exc=exc)
+            if hasattr(self, "retry"):
+                raise self.retry(exc=exc)
+            raise
 
 
 @shared_task(  # type: ignore[misc, untyped-decorator, unused-ignore]

@@ -1,3 +1,4 @@
+import html
 import re
 import logging
 from typing import Any
@@ -12,11 +13,13 @@ logger = logging.getLogger(__name__)
 
 def _markdown_to_telegram_html(text: str) -> str:
     """Convert basic Markdown syntax (**bold**, [link](url)) to Telegram-compatible HTML tags."""
+    # Экранируем спецсимволы HTML
+    escaped_text = html.escape(text)
     # Заменяем ссылки [label](url) на <a href="url">label</a>
-    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
+    escaped_text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', escaped_text)
     # Заменяем **жирный** на <b>жирный</b>
-    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
-    return text
+    escaped_text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', escaped_text)
+    return escaped_text
 
 
 def _should_retry_openai(exc: BaseException) -> bool:
@@ -90,7 +93,7 @@ class OpenAIGenerator(BaseAIGenerator):
             # Если закончилась квота (429), используем красивый HTML fallback
             if "insufficient_quota" in str(exc):
                 logger.warning("OpenAI quota exceeded. Using fallback HTML text generator.")
-                clean_title = title.replace("**", "").strip()
+                clean_title = html.escape(title.replace("**", "").strip())
                 formatted_text = _markdown_to_telegram_html(text)
                 return f"📌 <b>{clean_title}</b>\n\n{formatted_text}"
                 

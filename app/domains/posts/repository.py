@@ -1,7 +1,8 @@
 import uuid 
-from typing import Sequence
+from typing import Any, Sequence, cast
 
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.posts.models import Post, PostStatus
@@ -25,6 +26,21 @@ class PostRepository:
         stmt = select(Post).where(Post.news_id == news_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def claim_for_publishing(self, post_id: int) -> bool:
+        """Atomically claim a post so only one caller can publish it."""
+        stmt = (
+            update(Post)
+            .where(
+                Post.id == post_id,
+                Post.status.in_([PostStatus.NEW, PostStatus.GENERATED, PostStatus.FAILED]),
+            )
+            .values(status=PostStatus.PROCESSING)
+        )
+        result = await self.session.execute(stmt)
+        await self.session.commit()
+        cursor_result = cast(CursorResult[Any], result)
+        return bool(cursor_result.rowcount)
 
     async def get_by_status(self, status: PostStatus, limit: int = 50) -> Sequence[Post]:
         """Fetch post filtered by their publication status."""

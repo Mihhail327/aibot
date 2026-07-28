@@ -13,6 +13,7 @@ from app.domains.posts.schemas import PostCreate, PostUpdate
 from app.domains.posts.service import PostService
 from app.domains.posts.tasks import process_and_publish_post, _async_process_and_publish
 
+
 @pytest.mark.asyncio
 async def test_post_repository_crud(db_session: AsyncSession) -> None:
     repo = PostRepository(db_session)
@@ -108,13 +109,18 @@ async def test_posts_api_endpoints(async_client: AsyncClient, auth_headers: dict
 
     gen_resp = await async_client.post(
         "/api/v1/posts/generate",
-        json={"title": "Test Title", "text": "Test text description"}
+        json={"title": "Test Title", "text": "Test text description"},
+        headers=auth_headers,
     )
     assert gen_resp.status_code == 200
     assert gen_resp.json()["generated_text"] == "Generated Telegram post content 🎉"
 
     # Validation failure for empty generate endpoint
-    gen_val_resp = await async_client.post("/api/v1/posts/generate", json={})
+    gen_val_resp = await async_client.post(
+        "/api/v1/posts/generate",
+        json={},
+        headers=auth_headers,
+    )
     assert gen_val_resp.status_code == 422
 
     # Create post via API

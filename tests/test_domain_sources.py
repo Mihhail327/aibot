@@ -7,7 +7,7 @@ from app.core.exceptions import DuplicateResourceException, NotFoundException
 from app.domains.sources.repository import SourceRepository
 from app.domains.sources.schemas import SourceCreate, SourceType, SourceUpdate
 from app.domains.sources.service import SourceService
-from app.domains.sources.tasks import test_parsing_task
+from app.domains.sources.tasks import run_parsing_task
 
 @pytest.mark.asyncio
 async def test_source_repository_crud(db_session: AsyncSession) -> None:
@@ -120,11 +120,11 @@ async def test_sources_api_endpoints(async_client: AsyncClient, auth_headers: di
 
 def test_source_task_execution(mocker: Any) -> None:
     # Test Celery test_parsing_task
-    res = test_parsing_task.apply(args=["https://example.com/rss"])
+    res = run_parsing_task.apply(args=["https://example.com/rss"])
     assert res.result == {"status": "success", "url": "https://example.com/rss"}
 
 def test_source_task_retry(mocker: Any) -> None:
     mocker.patch("time.sleep", side_effect=ValueError("Parsing failed"))
     with pytest.raises(Exception) as exc:
-        test_parsing_task.run("https://example.com/fail")
+        run_parsing_task.run("https://example.com/fail")
     assert "Parsing failed" in str(exc.value)

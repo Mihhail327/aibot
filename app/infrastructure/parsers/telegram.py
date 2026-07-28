@@ -4,6 +4,7 @@ from typing import Sequence
 # Импортируем тип Message из Telethon для строгой типизации
 from telethon.tl.custom.message import Message
 
+from app.core.config import settings
 from app.infrastructure.telegram.client import TelegramParserClient
 
 logger = logging.getLogger(__name__)
@@ -34,11 +35,14 @@ class TelegramChannelParser:
 
         return messages
 
-    async def download_media_for_message(self, message: Message, download_dir: str = "/app/media") -> str | None:
+    async def download_media_for_message(self, message: Message, download_dir: str | None = None) -> str | None:
         """
         Download photo/image media attached to a Telegram message if present.
         Returns the absolute local path to the downloaded file, or None if no media.
         """
+        if download_dir is None:
+            download_dir = settings.MEDIA_DIR
+
         if not message.media or not (message.photo or getattr(message, "document", None)):
             return None
 
